@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  nginx:
+    build: .
+    container_name: jenkins-nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - EMAIL=${EMAIL:-admin@example.com}
+      - JENKINS_HOST=${JENKINS_HOST:-10.8.112.16}
+      - JENKINS_PORT=${JENKINS_PORT:-8080}
+      - SSL_ENABLED=${SSL_ENABLED:-true}
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./logs:/var/log/nginx
+      - ./html:/var/www/html
+      - certbot-webroot:/var/www/certbot
+    networks:
+      - jenkins-network
+    restart: unless-stopped
+    depends_on:
+      - certbot
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: jenkins-certbot
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    networks:
+      - jenkins-network
+    command: >
+      sh -c "
+        trap 'exit 0' TERM;
+        while :; do
+          certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
+          sleep 12h;
+        done
+      "
+    restart: unless-stopped
+
+  # Optional: Include Jenkins container if you want to run Jenkins in Docker too
+  # Uncomment the following section if you want to run Jenkins in the same Docker network
+  # jenkins:
+  #   image: jenkins/jenkins:lts
+  #   container_name: jenkins
+  #   ports:
+  #     - "8080:8080"
+  #     - "50000:50000"
+  #   volumes:
+  #     - jenkins_home:/var/jenkins_home
+  #   networks:
+  #     - jenkins-network
+  #   restart: unless-stopped
+  #   environment:
+  #     - JENKINS_OPTS=--httpPort=8080
+
+volumes:
+  certbot-webroot:
+  # jenkins_home:  # Uncomment if using Jenkins container
+
+networks:
+  jenkins-network:
+    driver: bridge 

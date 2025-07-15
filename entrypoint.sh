@@ -50,6 +50,14 @@ template_config() {
         fi
     fi
     
+    # Ensure SSL paths are set
+    if [ -z "$CURRENT_SSL_CERT_PATH" ] || [ -z "$CURRENT_SSL_KEY_PATH" ]; then
+        log "ERROR: SSL certificate or key path is empty!"
+        exit 1
+    fi
+    log "Using SSL cert: $CURRENT_SSL_CERT_PATH"
+    log "Using SSL key: $CURRENT_SSL_KEY_PATH"
+
     # Template the configuration file
     envsubst '${DOMAIN} ${JENKINS_HOST} ${JENKINS_PORT} ${SSL_CERT_PATH} ${SSL_KEY_PATH}' < "$config_file" > "$temp_file"
 

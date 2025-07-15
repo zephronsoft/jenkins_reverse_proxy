@@ -34,8 +34,7 @@ services:
       - certbot-webroot:/var/www/certbot
     networks:
       - jenkins-network
-    command: >
-      /bin/sh -c "certbot certonly --webroot -w /var/www/certbot -d ${DOMAIN:-localhost} --email ${EMAIL:-admin@example.com} --agree-tos --no-eff-email --force-renewal --non-interactive"
+    command: ["/bin/sh", "-c", "certbot certonly --webroot -w /var/www/certbot -d jenkins.funsports.bet --email chenny@admin.com --agree-tos --no-eff-email --force-renewal --non-interactive"]
     restart: unless-stopped
 
   # Optional: Include Jenkins container if you want to run Jenkins in Docker too

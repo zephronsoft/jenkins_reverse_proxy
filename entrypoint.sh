@@ -143,6 +143,20 @@ shutdown() {
 # Trap signals
 trap shutdown SIGTERM SIGINT
 
+# Function to wait for Nginx to be ready
+wait_for_nginx() {
+    log "Waiting for Nginx to be ready..."
+    for i in {1..30}; do
+        if curl -s http://localhost/.well-known/acme-challenge/ >/dev/null; then
+            log "Nginx is ready."
+            return 0
+        fi
+        sleep 1
+    done
+    log "ERROR: Nginx did not become ready in time."
+    exit 1
+}
+
 # Main execution
 log "Starting Jenkins Nginx Reverse Proxy..."
 log "Domain: $DOMAIN"
@@ -165,6 +179,9 @@ fi
 
 # Start nginx
 start_nginx
+
+# Wait for nginx to be ready before attempting SSL setup
+wait_for_nginx
 
 # Setup SSL certificates (if enabled)
 setup_ssl

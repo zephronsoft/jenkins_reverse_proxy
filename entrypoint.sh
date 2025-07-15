@@ -52,14 +52,27 @@ template_config() {
     
     # Template the configuration file
     envsubst '${DOMAIN} ${JENKINS_HOST} ${JENKINS_PORT} ${SSL_CERT_PATH} ${SSL_KEY_PATH}' < "$config_file" > "$temp_file"
-    
-    # Add ssl_enabled variable for conditional logic
-    sed -i "s/\$ssl_enabled/\"$SSL_ENABLED\"/g" "$temp_file"
-    
+
+    # Add ssl_enabled variable for conditional logic (no longer needed)
+    # sed -i "s/\$ssl_enabled/\"$SSL_ENABLED\"/g" "$temp_file"
+
     # Replace SSL paths with current paths
     sed -i "s|\${SSL_CERT_PATH}|$CURRENT_SSL_CERT_PATH|g" "$temp_file"
     sed -i "s|\${SSL_KEY_PATH}|$CURRENT_SSL_KEY_PATH|g" "$temp_file"
-    
+
+    # Insert conditional blocks for HTTP server
+    if [ "$SSL_ENABLED" = "true" ]; then
+        # Redirect block for SSL enabled
+        REDIRECT_BLOCK='location / {\n    return 301 https://$server_name$request_uri;\n}'
+        PROXY_BLOCK=''
+    else
+        # Proxy block for SSL disabled
+        REDIRECT_BLOCK=''
+        PROXY_BLOCK='location / {\n    proxy_pass http://jenkins_backend;\n    proxy_set_header Host $host;\n    proxy_set_header X-Real-IP $remote_addr;\n    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n    proxy_set_header X-Forwarded-Proto $scheme;\n    proxy_set_header X-Forwarded-Port $server_port;\n    proxy_set_header X-Forwarded-Host $host;\n    proxy_set_header X-Forwarded-Server $host;\n    proxy_http_version 1.1;\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection "upgrade";\n    proxy_connect_timeout 60s;\n    proxy_send_timeout 60s;\n    proxy_read_timeout 60s;\n    proxy_buffering on;\n    proxy_buffer_size 4k;\n    proxy_buffers 8 4k;\n    proxy_busy_buffers_size 8k;\n    client_max_body_size 100M;\n    client_body_buffer_size 128k;\n    proxy_cache_bypass $http_upgrade;\n    proxy_no_cache $http_upgrade;\n    limit_req zone=jenkins burst=20 nodelay;\n}'
+    fi
+    sed -i "s|#__REDIRECT_BLOCK__|$REDIRECT_BLOCK|g" "$temp_file"
+    sed -i "s|#__PROXY_BLOCK__|$PROXY_BLOCK|g" "$temp_file"
+
     # Move templated file back
     mv "$temp_file" "$config_file"
     
